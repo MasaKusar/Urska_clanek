@@ -11,8 +11,8 @@ library(ggplot2)
 ```
 
 ```{r}
-n_low <- 100000
-n_high <- 100000
+n_low <- 1000000
+n_high <- 1000000
 
 risk_low_nought_1 <- 0.0001
 risk_low_nought_2 <- 0.0001
@@ -188,7 +188,7 @@ count_table <- as.data.frame(t(c(n_low, n_high, rep(0, 16))))
 names(count_table) <- options
 
 
-for (i in 1:100){
+for (i in 1:10){
   status <- change_status_function(status)
   counts <- count_function(status, options)
   count_table <- rbind(count_table, counts)
