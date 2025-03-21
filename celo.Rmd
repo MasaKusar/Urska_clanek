@@ -4,6 +4,7 @@ output: pdf_document
 date: "2024-12-30"
 ---
 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
@@ -13,65 +14,36 @@ library(tidyr)
 ```
 
 ```{r}
-n <- 20000
+n <- 2000000
 perc_low <- 0.5
 perc_high <- 0.5
 
 n_low <- n*perc_low
 n_high <- n*perc_high
 
-risk_low_nought_1 <- 0.0001
-risk_low_nought_2 <- 0.0001
-risk_low_nought_2_excl <- risk_low_nought_1 + risk_low_nought_2
-risk_low_nought_3 <- 0.00001
-risk_low_nought_3_excl <- risk_low_nought_2_excl + risk_low_nought_3
-risk_low_nought_A <- 0.000001
-risk_low_nought_A_excl <- risk_low_nought_3_excl + risk_low_nought_A
-risk_low_1_2 <- 0.0001
-risk_low_1_3 <- 0.00005
-risk_low_1_3_excl <- risk_low_1_2 + risk_low_1_3
-risk_low_1_A <- 0.00002
-risk_low_1_A_excl <- risk_low_1_3_excl + risk_low_1_A
-risk_low_2_3 <- 0.0005
-risk_low_2_A <- 0.0001
-risk_low_2_A_excl <- risk_low_2_3 + risk_low_2_A
-risk_low_3_A <- 0.001
-risk_low_A_B <- 0.05
-risk_low_B_C <- 0.07
-risk_low_C_D <- 0.09
+risk_low_nought_low <- 0.0001
+risk_low_nought_high <- 0.0001
+risk_low_nought_high_excl <- risk_low_nought_low + risk_low_nought_high
+risk_low_nought_ca <- 0.000001
+risk_low_nought_ca_excl <- risk_low_nought_high_excl + risk_low_nought_ca
+risk_low_low_high <- 0.0001
+risk_low_low_ca <- 0.00002
+risk_low_low_ca_excl <- risk_low_low_high + risk_low_low_ca
+risk_low_high_ca <- 0.0001
 
-risk_high_nought_1 <- 0.0002
-risk_high_nought_2 <- 0.0002
-risk_high_nought_2_excl <- risk_high_nought_1 + risk_high_nought_2
-risk_high_nought_3 <- 0.00002
-risk_high_nought_3_excl <- risk_high_nought_2_excl + risk_high_nought_3
-risk_high_nought_A <- 0.000002
-risk_high_nought_A_excl <- risk_high_nought_3_excl + risk_high_nought_A
-risk_high_1_2 <- 0.0002
-risk_high_1_3 <- 0.0001
-risk_high_1_3_excl <- risk_high_1_2 + risk_high_1_3
-risk_high_1_A <- 0.00004
-risk_high_1_A_excl <- risk_high_1_3_excl + risk_high_1_A
-risk_high_2_3 <- 0.001
-risk_high_2_A <- 0.0002
-risk_high_2_A_excl <- risk_high_2_3 + risk_high_2_A
-risk_high_3_A <- 0.002
-risk_high_A_B <- 0.1
-risk_high_B_C <- 0.14
-risk_high_C_D <- 0.18
+risk_high_nought_low <- 0.0002
+risk_high_nought_high <- 0.0002
+risk_high_nought_high_excl <- risk_high_nought_low + risk_high_nought_high
+risk_high_nought_ca <- 0.000002
+risk_high_nought_ca_excl <- risk_high_nought_high_excl + risk_high_nought_ca
+risk_high_low_high <- 0.0002
+risk_high_low_ca <- 0.00004
+risk_high_low_ca_excl <- risk_high_low_high + risk_high_low_ca
+risk_high_high_ca <- 0.002
 
-risk_D_death <- 0.2
+risk_ca_death <- 0.2
 
-risk_IT_A_B <- 0.01
-risk_IT_A_C <- 0.001
-risk_IT_A_C_excl <- risk_IT_A_B + risk_IT_A_C
-risk_IT_A_D <- 0.0001
-risk_IT_A_D_excl <- risk_IT_A_C_excl + risk_IT_A_D
-risk_IT_B_C <- 0.05
-risk_IT_B_D <- 0.02
-risk_IT_B_D_excl <- risk_IT_B_C + risk_IT_B_D
-risk_IT_C_D <- 0.06
-risk_IT_D_death <- 0.1
+risk_IT_ca_death <- 0.1
 
 risk_death <- 0.07
 risk_birth <- 0.07
@@ -97,93 +69,49 @@ create_population <- function(status){ # samo iscemo steady state populacijo bre
         random <- runif(1)
         if (status$risk[i]=="low"){
           if (status$stage[i]=="nought"){
-            if (random < risk_low_nought_1){
-              status_copy$stage[i] <- "1"
-            } else if (random < (risk_low_nought_2_excl)){
-              status_copy$stage[i] <- "2"
-            } else if (random < (risk_low_nought_3_excl)){
-              status_copy$stage[i] <- "3"
-            } else if (random < (risk_low_nought_A_excl)){
-              status_copy$stage[i] <- "A"
+            if (random < risk_low_nought_low){
+              status_copy$stage[i] <- "low"
+            } else if (random < (risk_low_nought_high_excl)){
+              status_copy$stage[i] <- "high"
+            } else if (random < (risk_low_nought_ca_excl)){
+              status_copy$stage[i] <- "ca"
             }
-          } else if (status$stage[i]=="1"){
-              if (random < risk_low_1_2){
-              status_copy$stage[i] <- "2"
-            } else if (random < (risk_low_1_3_excl)){
-              status_copy$stage[i] <- "3"
-            } else if (random < (risk_low_1_A_excl)){
-              status_copy$stage[i] <- "A"
+          } else if (status$stage[i]=="low"){
+              if (random < risk_low_low_high){
+              status_copy$stage[i] <- "high"
+            } else if (random < (risk_low_low_ca_excl)){
+              status_copy$stage[i] <- "ca"
             }
-          } else if (status$stage[i]=="2"){
-              if (random < risk_low_2_3){
-              status_copy$stage[i] <- "3"
-            } else if (random < (risk_low_2_A_excl)){
-              status_copy$stage[i] <- "A"
+          } else if (status$stage[i]=="high"){
+              if (random < (risk_low_high_ca_excl)){
+              status_copy$stage[i] <- "ca"
             } 
-          } else if (status$stage[i]=="3"){
-              if (random < risk_low_3_A){
-              status_copy$stage[i] <- "A"
-            }
-          } else if (status$stage[i]=="A"){
-              if (random < risk_low_A_B){
-              status_copy$stage[i] <- "B"
-            }
-          } else if (status$stage[i]=="B"){
-              if (random < risk_low_B_C){
-              status_copy$stage[i] <- "C"
-            }
-          } else if (status$stage[i]=="C"){
-              if (random < risk_low_C_D){
-              status_copy$stage[i] <- "D"
-            }
-          } else if (status$stage[i]=="D"){
-              if (random < risk_D_death){
+          } else if (status$stage[i]=="ca"){
+              if (random < risk_ca_death){
               status_copy[i] <- "dead_AC"
             }
           }
       } else if (status$risk[i]=="high"){ #zaklepaj low risk
           if (status$stage[i]=="nought"){
-            if (random < risk_high_nought_1){
-              status_copy$stage[i] <- "1"
-            } else if (random < (risk_high_nought_2_excl)){
-              status_copy$stage[i] <- "2"
-            } else if (random < (risk_high_nought_3_excl)){
-              status_copy$stage[i] <- "3"
-            } else if (random < (risk_high_nought_A_excl)){
-              status_copy$stage[i] <- "A"
+            if (random < risk_high_nought_low){
+              status_copy$stage[i] <- "low"
+            } else if (random < (risk_high_nought_high_excl)){
+              status_copy$stage[i] <- "high"
+            } else if (random < (risk_high_nought_ca_excl)){
+              status_copy$stage[i] <- "ca"
             }
-          } else if (status$stage[i]=="1"){
-              if (random < risk_high_1_2){
-              status_copy$stage[i] <- "2"
-            } else if (random < (risk_high_1_3_excl)){
-              status_copy$stage[i] <- "3"
-            } else if (random < (risk_high_1_A_excl)){
-              status_copy$stage[i] <- "A"
+          } else if (status$stage[i]=="low"){
+              if (random < risk_high_low_high){
+              status_copy$stage[i] <- "high"
+            } else if (random < (risk_high_low_ca_excl)){
+              status_copy$stage[i] <- "ca"
             }
-          } else if (status$stage[i]=="2"){
-              if (random < risk_high_2_3){
-              status_copy$stage[i] <- "3"
-            } else if (random < (risk_high_2_A_excl)){
-              status_copy$stage[i] <- "A"
+          } else if (status$stage[i]=="high"){
+              if (random < (risk_high_high_ca_excl)){
+              status_copy$stage[i] <- "ca"
             } 
-          } else if (status$stage[i]=="3"){
-              if (random < risk_high_3_A){
-              status_copy$stage[i] <- "A"
-            }
-          } else if (status$stage[i]=="A"){
-              if (random < risk_high_A_B){
-              status_copy$stage[i] <- "B"
-            }
-          } else if (status$stage[i]=="B"){
-              if (random < risk_high_B_C){
-              status_copy$stage[i] <- "C"
-            }
-          } else if (status$stage[i]=="C"){
-              if (random < risk_high_C_D){
-              status_copy$stage[i] <- "D"
-            }
-          } else if (status$stage[i]=="D"){
-              if (random < risk_D_death){
+          } else if (status$stage[i]=="ca"){
+              if (random < risk_ca_death){
               status_copy[i] <- "dead_AC"
             }
           }
@@ -217,7 +145,7 @@ count_function <- function(status){
   table <- setDT(status)
 
   test <- setkey(table, stage, risk, surv_year, treatment_year, treatment_status)[, .N, 
-               by="stage,risk,surv_year,treatment_year,treatment_status"][CJ(c("nought", "1", "2", "3", "A", "B", "C", "D", "dead_AC", "dead_other"),
+               by="stage,risk,surv_year,treatment_year,treatment_status"][CJ(c("nought", "low", "high", "ca", "dead_AC", "dead_other"),
                c("low", "high"),
                as.character(seq(0, surv_years-1, 1)),
                c(seq(0, treat_years, 1), NA),
@@ -228,7 +156,7 @@ count_function <- function(status){
 }
 
 ```
-options_stage <- c("nought", "1", "2", "3", "A", "B", "C", "D", "dead_AC", "dead_other")
+options_stage <- c("nought", "low", "high", "ca", "dead_AC", "dead_other")
 options_risk <- c("low", "high")
 options_surv_year <- seq(0, surv_years-1, 1)
 options_treatment_year <- c(seq(0, treat_years, 1), NA)
@@ -244,7 +172,7 @@ status <- as.data.frame(cbind(stage, risk, surv_year, treatment_year, treatment_
 
 table <- setDT(status)
 test <- setkey(table, stage, risk, surv_year, treatment_year, treatment_status)[, .N, 
-               by="stage,risk,surv_year,treatment_year,treatment_status"][CJ(c("nought", "1", "2", "3", "A", "B", "C", "D", "dead_AC", "dead_other"),
+               by="stage,risk,surv_year,treatment_year,treatment_status"][CJ(c("nought", "low", "high", "ca", "dead_AC", "dead_other"),
                c("low", "high"),
                as.character(seq(0, surv_years-1, 1)),
                c(seq(0, treat_years, 1), NA),
@@ -344,41 +272,15 @@ ongoing_population <- function(status){ # spreminjanje populacije, ki je lahko t
         random <- runif(1)
         
         if (status$treatment_status[i]=="IT" | status$treatment_status[i]=="repeat_IT"){ #vse AIN imajo treatment_status AIN_history, in se tu obravnavajo kot "low" in "high" risk
-          if (status$stage[i]=="A"){
-            if (random < risk_IT_A_B){
-              staus_copy$stage[i] <- "B"
-            } else if (random < risk_IT_A_C_excl){
-              status_copy$stage[i] <- "C"
-            } else if (random < risk_IT_A_D_excl){
-              status_copy$stage[i] <- "D"
-            } else if (random <- risk_IT_A_D_excl + 0.8){# ti so ozdraveli in zacnejo steti leta za followup
+          if (status$stage[i]=="ca"){
+            if (random < 0.8){# ti so ozdraveli in zacnejo steti leta za followup
               status_copy$stage[i] <- "nought"
               status_copy$treatment_status[i] <- "CA_followup"
               status_copy$treatment_year[i] <- 1
             }
-          } else if (status$stage[i]=="B"){
-            if (random < risk_IT_B_C){
-              status_copy$stage[i] <- "C"
-            } else if (random < risk_IT_B_D_excl){
-              status_copy$stage[i] <- "D"
-            } else if (random <- risk_IT_A_D_excl + 0.5){# ti so ozdraveli in zacnejo steti leta za followup
-              status_copy$stage[i] <- "nought"
-              status_copy$treatment_status[i] <- "CA_followup"
-              status_copy$treatment_year[i] <- 1
-            }
-          } else if (status$stage[i]=="C"){
-            if (random < risk_IT_C_D){
-              status_copy$stage[i] <- "D"
-            } else if (random <- risk_IT_A_D_excl + 0.1){# ti so ozdraveli in zacnejo steti leta za followup
-              status_copy$stage[i] <- "nought"
-              status_copy$treatment_status[i] <- "CA_followup"
-              status_copy$treatment_year[i] <- 1
-            }
-          } else if (status$stage[i]=="D"){
-            if (random < risk_IT_D_death){
+          } else if (random < 0.8 + risk_IT_ca_death){
               status_copy$stage[i] <- "dead_AC"
               status_copy$treatment_status[i] <- "dead"
-            }
           }
         } else { #zaklepaj in treatment
             if (status$treatment_status[i]=="AIN"){
@@ -387,93 +289,49 @@ ongoing_population <- function(status){ # spreminjanje populacije, ki je lahko t
             }
             if (status$risk[i]=="low"){
               if (status$stage[i]=="nought"){
-                if (random < risk_low_nought_1){
-                  status_copy$stage[i] <- "1"
-                } else if (random < (risk_low_nought_2_excl)){
-                  status_copy$stage[i] <- "2"
-                } else if (random < (risk_low_nought_3_excl)){
-                  status_copy$stage[i] <- "3"
-                } else if (random < (risk_low_nought_A_excl)){
-                  status_copy$stage[i] <- "A"
+                if (random < risk_low_nought_low){
+                  status_copy$stage[i] <- "low"
+                } else if (random < (risk_low_nought_low_excl)){
+                  status_copy$stage[i] <- "high"
+                } else if (random < (risk_low_nought_ca_excl)){
+                  status_copy$stage[i] <- "ca"
                 }
-              } else if (status$stage[i]=="1"){
-                  if (random < risk_low_1_2){
-                  status_copy$stage[i] <- "2"
-                } else if (random < (risk_low_1_3_excl)){
-                  status_copy$stage[i] <- "3"
-                } else if (random < (risk_low_1_A_excl)){
-                  status_copy$stage[i] <- "A"
+              } else if (status$stage[i]=="low"){
+                  if (random < risk_low_low_high){
+                  status_copy$stage[i] <- "high"
+                } else if (random < (risk_low_low_ca_excl)){
+                  status_copy$stage[i] <- "ca"
                 }
-              } else if (status$stage[i]=="2"){
-                  if (random < risk_low_2_3){
-                  status_copy$stage[i] <- "3"
-                } else if (random < (risk_low_2_A_excl)){
-                  status_copy$stage[i] <- "A"
+              } else if (status$stage[i]=="high"){
+                  if (random < risk_low_high_ca){
+                  status_copy$stage[i] <- "ca"
                 } 
-              } else if (status$stage[i]=="3"){
-                  if (random < risk_low_3_A){
-                  status_copy$stage[i] <- "A"
-                }
-              } else if (status$stage[i]=="A"){
-                  if (random < risk_low_A_B){
-                  status_copy$stage[i] <- "B"
-                }
-              } else if (status$stage[i]=="B"){
-                  if (random < risk_low_B_C){
-                  status_copy$stage[i] <- "C"
-                }
-              } else if (status$stage[i]=="C"){
-                  if (random < risk_low_C_D){
-                  status_copy$stage[i] <- "D"
-                }
-              } else if (status$stage[i]=="D"){
-                  if (random < risk_D_death){
+              } else if (status$stage[i]=="ca"){
+                  if (random < risk_ca_death){
                   status_copy[i] <- "dead_AC"
                 }
               }
           } else if (status$risk[i]=="high"){ #zaklepaj low risk
               if (status$stage[i]=="nought"){
-                if (random < risk_high_nought_1){
-                  status_copy$stage[i] <- "1"
-                } else if (random < (risk_high_nought_2_excl)){
-                  status_copy$stage[i] <- "2"
-                } else if (random < (risk_high_nought_3_excl)){
-                  status_copy$stage[i] <- "3"
-                } else if (random < (risk_high_nought_A_excl)){
-                  status_copy$stage[i] <- "A"
+                if (random < risk_high_nought_low){
+                  status_copy$stage[i] <- "low"
+                } else if (random < (risk_high_nought_high_excl)){
+                  status_copy$stage[i] <- "high"
+                } else if (random < (risk_high_nought_ca_excl)){
+                  status_copy$stage[i] <- "ca"
                 }
-              } else if (status$stage[i]=="1"){
-                  if (random < risk_high_1_2){
-                  status_copy$stage[i] <- "2"
-                } else if (random < (risk_high_1_3_excl)){
-                  status_copy$stage[i] <- "3"
-                } else if (random < (risk_high_1_A_excl)){
-                  status_copy$stage[i] <- "A"
+              } else if (status$stage[i]=="low"){
+                  if (random < risk_high_low_high){
+                  status_copy$stage[i] <- "high"
+                } else if (random < (risk_high_low_ca_excl)){
+                  status_copy$stage[i] <- "ca"
                 }
-              } else if (status$stage[i]=="2"){
-                  if (random < risk_high_2_3){
-                  status_copy$stage[i] <- "3"
-                } else if (random < (risk_high_2_A_excl)){
-                  status_copy$stage[i] <- "A"
+              } else if (status$stage[i]=="high"){
+                  if (random < (risk_high_high_ca)){
+                  status_copy$stage[i] <- "ca"
                 } 
-              } else if (status$stage[i]=="3"){
-                  if (random < risk_high_3_A){
-                  status_copy$stage[i] <- "A"
-                }
-              } else if (status$stage[i]=="A"){
-                  if (random < risk_high_A_B){
-                  status_copy$stage[i] <- "B"
-                }
-              } else if (status$stage[i]=="B"){
-                  if (random < risk_high_B_C){
-                  status_copy$stage[i] <- "C"
-                }
-              } else if (status$stage[i]=="C"){
-                  if (random < risk_high_C_D){
-                  status_copy$stage[i] <- "D"
-                }
-              } else if (status$stage[i]=="D"){
-                  if (random < risk_D_death){
+              } else if (status$stage[i]=="ca"){
+                  if (random < risk_ca_death){
                   status_copy[i] <- "dead_AC"
                 }
               }
@@ -525,78 +383,37 @@ diagnosis_function <- function(status){
     if (status$treatment_status[i]!="dead"){
       random <- runif(1)
       if (status$treatment_status[i]=="CA_followup"){#gledamo vsako leto, najdemo vse; "IT" tudi gledamo vsako leto, ampak najden AIN ne spremeni nicesar, ker ga samo odstranimo in itak ni generiran in gre zdravljenje naprej, ca pa ne bomo nasli, ker ga gledamo vsako leto
-        if (status$stage[i] =="A" | status$stage[i]=="B" | status$stage[i]=="C"| status$stage[i]=="D"){
+        if (status$stage[i] =="ca"){
           status$treatment_year[i] <- NA
           status$treatment_status[i] <- "repeat_IT"
         }
       } else if (status$treatment_status[i]=="none" | status$treatment_status[i]=="AIN_history" | status$treatment_status[i]=="CA_history" ) {#gledamo na screening, ostale najdemo samo nakljucno; zaklepaj in treatment
         if (status$surv_year[i]==0){ #te screenamo
-          if (status$stage[i]=="1"){
-            if (random < find_1_screen){
+          if (status$stage[i]=="low"){
+            if (random < find_low_screen){
               if(status$treatment_status[i]=="none")
               status$treatment_status[i] <- "AIN"
             }
-          } else if (status$stage[i]=="2"){
-            if (random < find_2_screen){
+          } else if (status$stage[i]=="high"){
+            if (random < find_high_screen){
               if(status$treatment_status[i]=="none")
               status$treatment_status[i] <- "AIN"
             }
-          } else if(status$stage[i]=="3"){
-            if (random < find_3_screen){
-              if(status$treatment_status[i]=="none")
-              status$treatment_status[i] <- "AIN"
-            }
-          } else if (status$stage[i]=="A"){
-            if (random < find_A_screen){
+          } else if (status$stage[i]=="ca"){
+            if (random < find_ca_screen){
               status$treatment_status[i] <- "IT"
               status$treatment_year[i] <- 0
               status$surv_year[i] <- NA
             }
-          } else if (status$stage[i]=="B"){
-            if (random < find_B_screen){
-              status$treatment_status[i] <- "IT"
-              status$treatment_year[i] <- 0
-              status$surv_year[i] <- NA
-            }
-          } else if (status$stage[i]=="C"){
-            if (random < find_C_screen){
-              status$treatment_status[i] <- "IT"
-              status$treatment_year[i] <- 0
-              status$surv_year[i] <- NA
-            }
-          } else if (status$stage[i]=="D"){
-            if (random < find_D_screen){
-              status$treatment_status[i] <- "IT"
-              status$treatment_year[i] <- 0
-              status$surv_year[i] <- NA
-            }
-          }
+          } 
         } else { #te nademo samo nakljucno; zaklepaj screenani
-            if (status$stage[i]=="A"){
-              if (random < find_A_null){
+            if (status$stage[i]=="ca"){
+              if (random < find_ca_null){
                 status$treatment_status[i] <- "IT"
                 status$treatment_year[i] <- 0
                 status$surv_year[i] <- NA
               }
-            } else if (status$stage[i]=="B"){
-              if (random < find_B_null){
-                status$treatment_status[i] <- "IT"
-                status$treatment_year[i] <- 0
-                status$surv_year[i] <- NA
-              }
-            } else if (status$stage[i]=="C"){
-              if (random < find_C_null){
-                status$treatment_status[i] <- "IT"
-                status$treatment_year[i] <- 0
-                status$surv_year[i] <- NA
-              }
-            } else if (status$stage[i]=="D"){
-              if (random < find_D_null){
-                status$treatment_status[i] <- "IT"
-                status$treatment_year[i] <- 0
-                status$surv_year[i] <- NA
-              }
-            }
+            } 
         } #zaklepaj nakljucni
       }#zaklepaj not in treatment
     } # zaklepaj ali je sploh ziv
@@ -612,7 +429,7 @@ count_function <- function(status){
   table <- setDT(status)
 
   test <- setkey(table, stage, risk, surv_year, treatment_year, treatment_status)[, .N, 
-               by="stage,risk,surv_year,treatment_year,treatment_status"][CJ(c("nought", "1", "2", "3", "A", "B", "C", "D", "dead_AC", "dead_other"),
+               by="stage,risk,surv_year,treatment_year,treatment_status"][CJ(c("nought", "low", "high", "ca", "dead_AC", "dead_other"),
                c("low", "high"),
                c(seq(0, surv_years-1, 1), NA),
                c(seq(0, treat_years, 1), NA),
@@ -627,20 +444,13 @@ count_function <- function(status){
 
 
 ```{r}
-find_1_null <- 0
-find_2_null <- 0
-find_3_null <- 0 # ce to dvignes, moras spremeniti kodo
-find_A_null <- 0.1
-find_B_null <- 0.4
-find_C_null <- 0.8
-find_D_null <- 1
-find_1_screen <- 0.8 # od tu naprej rabis tri sete, za boljsi in slabsi screen in sploh brez screena
-find_2_screen <- 0.95
-find_3_screen <- 1
-find_A_screen <- 1
-find_B_screen <- 1
-find_C_screen <- 1
-find_D_screen <- 1
+find_low_null <- 0
+find_high_null <- 0# ce to dvignes, moras spremeniti kodo?
+find_ca_null <- 0.1
+
+find_low_screen <- 0.8 # od tu naprej rabis tri sete, za boljsi in slabsi screen in sploh brez screena
+find_high_screen <- 0.95
+find_ca_screen <- 1
 ```
 
 ```{r}
@@ -660,7 +470,7 @@ status$surv_year <- as.numeric(status$surv_year)
 ```{r}
 table <- setDT(status)
 test <- setkey(table, stage, risk, surv_year, treatment_year, treatment_status)[, .N, 
-               by="stage,risk,surv_year,treatment_year,treatment_status"][CJ(c("nought", "1", "2", "3", "A", "B", "C", "D", "dead_AC", "dead_other"),
+               by="stage,risk,surv_year,treatment_year,treatment_status"][CJ(c("nought", "low", "high", "ca", "dead_AC", "dead_other"),
                c("low", "high"),
                c(seq(0, surv_years-1, 1), NA),
                c(seq(0, treat_years, 1), NA),
