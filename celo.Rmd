@@ -14,7 +14,7 @@ library(tidyr)
 ```
 
 ```{r}
-n <- 2000000
+n <- 200
 perc_low <- 0.5
 perc_high <- 0.5
 
@@ -23,27 +23,32 @@ n_high <- n*perc_high
 
 risk_low_nought_low <- 0.0001
 risk_low_nought_high <- 0.0001
-risk_low_nought_high_excl <- risk_low_nought_low + risk_low_nought_high
 risk_low_nought_ca <- 0.000001
-risk_low_nought_ca_excl <- risk_low_nought_high_excl + risk_low_nought_ca
+risk_low_nought_same <- 1 - risk_low_nought_low - risk_low_nought_high - risk_low_nought_ca
 risk_low_low_high <- 0.0001
 risk_low_low_ca <- 0.00002
-risk_low_low_ca_excl <- risk_low_low_high + risk_low_low_ca
+risk_low_low_same <- 1 - risk_low_low_high - risk_low_low_ca
 risk_low_high_ca <- 0.0001
+risk_low_high_low <- 0.1
+risk_low_high_same <- 1 - risk_low_high_ca - risk_low_high_low
 
 risk_high_nought_low <- 0.0002
 risk_high_nought_high <- 0.0002
-risk_high_nought_high_excl <- risk_high_nought_low + risk_high_nought_high
 risk_high_nought_ca <- 0.000002
-risk_high_nought_ca_excl <- risk_high_nought_high_excl + risk_high_nought_ca
+risk_high_nought_same <- 1 - risk_high_nought_low - risk_high_nought_high - risk_high_nought_ca
 risk_high_low_high <- 0.0002
 risk_high_low_ca <- 0.00004
-risk_high_low_ca_excl <- risk_high_low_high + risk_high_low_ca
+risk_high_low_same <- 1 - risk_high_low_high - risk_high_low_ca
 risk_high_high_ca <- 0.002
+risk_high_high_low <- 0.1
+risk_high_high_same <- 1 - risk_high_high_ca - risk_high_high_low
 
-risk_ca_death <- 0.2
+risk_ca_death <- 0.05
+risk_ca_curative <- 0.8
+risk_ca_continue <- 1 - risk_ca_death - risk_ca_curative
+risk_ca_alive <- 1-risk_ca_death
 
-risk_IT_ca_death <- 0.1
+risk_IT_ca_death <- 0.01
 
 risk_death <- 0.07
 risk_birth <- 0.07
@@ -60,60 +65,32 @@ create_population <- function(status){ # samo iscemo steady state populacijo bre
   status_copy <- status
   
   for (i in 1:dim(status)[1]){
+    
     random_death <- runif(1)
     if (random_death < risk_death){
       status_copy$stage[i] <- "dead_other"
       status_copy$treatment_status[i] <- "dead"
 
     } else { #zaklepaj random death
-        random <- runif(1)
         if (status$risk[i]=="low"){
           if (status$stage[i]=="nought"){
-            if (random < risk_low_nought_low){
-              status_copy$stage[i] <- "low"
-            } else if (random < (risk_low_nought_high_excl)){
-              status_copy$stage[i] <- "high"
-            } else if (random < (risk_low_nought_ca_excl)){
-              status_copy$stage[i] <- "ca"
-            }
+            status_copy$stage[i] <- sample(c("low", "high", "ca", "nought"), 1, prob=c(risk_low_nought_low, risk_low_nought_high, risk_low_nought_ca, risk_low_nought_same))
           } else if (status$stage[i]=="low"){
-              if (random < risk_low_low_high){
-              status_copy$stage[i] <- "high"
-            } else if (random < (risk_low_low_ca_excl)){
-              status_copy$stage[i] <- "ca"
-            }
+              status_copy$stage[i] <- sample(c("high", "ca", "low"), 1, prob=c(risk_low_low_high, risk_low_low_ca, risk_low_low_same))
           } else if (status$stage[i]=="high"){
-              if (random < (risk_low_high_ca_excl)){
-              status_copy$stage[i] <- "ca"
-            } 
+              status_copy$stage[i] <- sample(c("ca", "low", "high"), 1, prob=c(risk_low_high_ca, risk_low_high_low, risk_low_high_same))
           } else if (status$stage[i]=="ca"){
-              if (random < risk_ca_death){
-              status_copy[i] <- "dead_AC"
-            }
+              status_copy$stage[i] <- sample(c("ca", "dead_AC"), 1, prob=c(risk_ca_death, risk_ca_alive))
           }
       } else if (status$risk[i]=="high"){ #zaklepaj low risk
           if (status$stage[i]=="nought"){
-            if (random < risk_high_nought_low){
-              status_copy$stage[i] <- "low"
-            } else if (random < (risk_high_nought_high_excl)){
-              status_copy$stage[i] <- "high"
-            } else if (random < (risk_high_nought_ca_excl)){
-              status_copy$stage[i] <- "ca"
-            }
+            status_copy$stage[i] <- sample(c("low", "high", "ca", "nought"), 1, prob=c(risk_high_nought_low, risk_high_nought_high, risk_high_nought_ca, risk_high_nought_same))
           } else if (status$stage[i]=="low"){
-              if (random < risk_high_low_high){
-              status_copy$stage[i] <- "high"
-            } else if (random < (risk_high_low_ca_excl)){
-              status_copy$stage[i] <- "ca"
-            }
+              status_copy$stage[i] <- sample(c("high", "ca", "low"), 1, prob=c(risk_high_low_high, risk_high_low_ca, risk_high_low_same))
           } else if (status$stage[i]=="high"){
-              if (random < (risk_high_high_ca_excl)){
-              status_copy$stage[i] <- "ca"
-            } 
+              status_copy$stage[i] <- sample(c("ca", "low", "high"), 1, prob=c(risk_high_high_ca, risk_high_high_low, risk_high_high_same))
           } else if (status$stage[i]=="ca"){
-              if (random < risk_ca_death){
-              status_copy[i] <- "dead_AC"
-            }
+              status_copy$stage[i] <- sample(c("ca", "dead_AC"), 1, prob=c(risk_ca_death, risk_ca_alive))
           }
       } #zaklepaj high risk
     } #zaklepaj no random death
@@ -187,9 +164,9 @@ YEARS <- 100
 results <- empty_table
 for(i in 1:YEARS){
   status <- create_population(status)
-  #line <- count_function(status)
+  line <- count_function(status)
   
-  #results <- cbind(results, line) #rabim za risanje generiranja simulacije, za dejansko stetje pa ne
+  results <- cbind(results, line) #rabim za risanje generiranja simulacije, za dejansko stetje pa ne
 
 }
 ```
@@ -270,7 +247,7 @@ ongoing_population <- function(status){ # spreminjanje populacije, ki je lahko t
 
     } else { #zaklepaj random death
         random <- runif(1)
-        
+
         if (status$treatment_status[i]=="IT" | status$treatment_status[i]=="repeat_IT"){ #vse AIN imajo treatment_status AIN_history, in se tu obravnavajo kot "low" in "high" risk
           if (status$stage[i]=="ca"){
             if (random < 0.8){# ti so ozdraveli in zacnejo steti leta za followup
@@ -289,51 +266,23 @@ ongoing_population <- function(status){ # spreminjanje populacije, ki je lahko t
             }
             if (status$risk[i]=="low"){
               if (status$stage[i]=="nought"){
-                if (random < risk_low_nought_low){
-                  status_copy$stage[i] <- "low"
-                } else if (random < (risk_low_nought_low_excl)){
-                  status_copy$stage[i] <- "high"
-                } else if (random < (risk_low_nought_ca_excl)){
-                  status_copy$stage[i] <- "ca"
-                }
+                status_copy$stage[i] <- sample(c("low", "high", "ca", "nought"), 1, prob=c(risk_low_nought_low, risk_low_nought_high, risk_low_nought_ca, risk_low_nought_same))
               } else if (status$stage[i]=="low"){
-                  if (random < risk_low_low_high){
-                  status_copy$stage[i] <- "high"
-                } else if (random < (risk_low_low_ca_excl)){
-                  status_copy$stage[i] <- "ca"
-                }
+                  status_copy$stage[i] <- sample(c("high", "ca", "low"), 1, prob=c(risk_low_low_high, risk_low_low_ca, risk_low_low_same))
               } else if (status$stage[i]=="high"){
-                  if (random < risk_low_high_ca){
-                  status_copy$stage[i] <- "ca"
-                } 
+                  status_copy$stage[i] <- sample(c("ca", "low", "high"), 1, prob=c(risk_low_high_ca, risk_low_high_low, risk_low_high_same))
               } else if (status$stage[i]=="ca"){
-                  if (random < risk_ca_death){
-                  status_copy[i] <- "dead_AC"
-                }
+                  status_copy$stage[i] <- sample(c("ca", "dead_AC"), 1, prob=c(risk_ca_death, risk_ca_alive))
               }
           } else if (status$risk[i]=="high"){ #zaklepaj low risk
               if (status$stage[i]=="nought"){
-                if (random < risk_high_nought_low){
-                  status_copy$stage[i] <- "low"
-                } else if (random < (risk_high_nought_high_excl)){
-                  status_copy$stage[i] <- "high"
-                } else if (random < (risk_high_nought_ca_excl)){
-                  status_copy$stage[i] <- "ca"
-                }
+                status_copy$stage[i] <- sample(c("low", "high", "ca", "nought"), 1, prob=c(risk_high_nought_low, risk_high_nought_high, risk_high_nought_ca, risk_high_nought_same))
               } else if (status$stage[i]=="low"){
-                  if (random < risk_high_low_high){
-                  status_copy$stage[i] <- "high"
-                } else if (random < (risk_high_low_ca_excl)){
-                  status_copy$stage[i] <- "ca"
-                }
+                  status_copy$stage[i] <- sample(c("high", "ca", "low"), 1, prob=c(risk_high_low_high, risk_high_low_ca, risk_high_low_same))
               } else if (status$stage[i]=="high"){
-                  if (random < (risk_high_high_ca)){
-                  status_copy$stage[i] <- "ca"
-                } 
+                  status_copy$stage[i] <- sample(c("ca", "low", "high"), 1, prob=c(risk_high_high_ca, risk_high_high_low, risk_high_high_same))
               } else if (status$stage[i]=="ca"){
-                  if (random < risk_ca_death){
-                  status_copy[i] <- "dead_AC"
-                }
+                  status_copy$stage[i] <- sample(c("ca", "dead_AC"), 1, prob=c(risk_ca_death, risk_ca_alive))
               }
           } #zaklepaj high risk
         } # zaklepaj not in treatment
@@ -456,8 +405,6 @@ find_ca_screen <- 1
 ```{r}
 #ZAZENES ENKRAT; POTEM SE NE DOTIKAS, DA OHRANIS status_start!!!!!
 status_start <- status[which(status$treatment_status!="dead"),] # ciscenje predhodnih mrtvih iz generirane populacije
-
-status <- status_start
 ```
 
 ```{r}
