@@ -14,33 +14,34 @@ library(tidyr)
 ```
 
 ```{r}
-n <- 200
+YEARS <- 20
+n <- 20000
 perc_low <- 0.5
 perc_high <- 0.5
 
 n_low <- n*perc_low
 n_high <- n*perc_high
 
-risk_low_nought_low <- 0.0001
-risk_low_nought_high <- 0.0001
-risk_low_nought_ca <- 0.000001
+risk_low_nought_low <- 0.025 ### ugibanje
+risk_low_nought_high <- 0.0025 ## deljeno z 10 za en višji prehod
+risk_low_nought_ca <- 0.00025 ##
 risk_low_nought_same <- 1 - risk_low_nought_low - risk_low_nought_high - risk_low_nought_ca
-risk_low_low_high <- 0.0001
-risk_low_low_ca <- 0.00002
+risk_low_low_high <- 0.05 #
+risk_low_low_ca <- 0.005 ##
 risk_low_low_same <- 1 - risk_low_low_high - risk_low_low_ca
-risk_low_high_ca <- 0.0001
-risk_low_high_low <- 0.1
+risk_low_high_ca <- 0.02 # kvazi literatura, polovica high risk
+risk_low_high_low <- 0.6 #
 risk_low_high_same <- 1 - risk_low_high_ca - risk_low_high_low
 
-risk_high_nought_low <- 0.0002
-risk_high_nought_high <- 0.0002
-risk_high_nought_ca <- 0.000002
+risk_high_nought_low <- 0.05 ###
+risk_high_nought_high <- 0.005 ###
+risk_high_nought_ca <- 0.000002 ###
 risk_high_nought_same <- 1 - risk_high_nought_low - risk_high_nought_high - risk_high_nought_ca
-risk_high_low_high <- 0.0002
-risk_high_low_ca <- 0.00004
+risk_high_low_high <- 0.1 #
+risk_high_low_ca <- 0.01 ##
 risk_high_low_same <- 1 - risk_high_low_high - risk_high_low_ca
-risk_high_high_ca <- 0.002
-risk_high_high_low <- 0.1
+risk_high_high_ca <- 0.035 # literatura
+risk_high_high_low <- 0.3 # literatura
 risk_high_high_same <- 1 - risk_high_high_ca - risk_high_high_low
 
 risk_ca_death <- 0.05
@@ -50,8 +51,8 @@ risk_ca_alive <- 1-risk_ca_death
 
 risk_IT_ca_death <- 0.01
 
-risk_death <- 0.07
-risk_birth <- 0.07
+risk_death <- 0.007 #
+risk_birth <- 0.007#
 
 surv_years <- 3
 treat_years <- 5
@@ -98,7 +99,7 @@ create_population <- function(status){ # samo iscemo steady state populacijo bre
   
   status_copy$surv_year <- as.character((as.numeric(status_copy$surv_year) + 1)%%3)
   
-  new <- trunc(rnorm(1, risk_birth, 0.01) * n)
+  new <- rbinom(1, n, risk_birth)
   new_low <- round(perc_low * new, 0)
   new_high <- new - new_low
   
@@ -138,6 +139,8 @@ options_risk <- c("low", "high")
 options_surv_year <- seq(0, surv_years-1, 1)
 options_treatment_year <- c(seq(0, treat_years, 1), NA)
 options_treatment_status <- c("none", "IT", "AIN_history", "CA_history", "dead")
+
+
 ```{r}
 stage <- rep("nought", n)
 risk <- c(rep("low", n_low), rep("high", n_high))
@@ -159,8 +162,8 @@ test <- setkey(table, stage, risk, surv_year, treatment_year, treatment_status)[
 empty_table <- test[, 1:5]
 ```
 
+
 ```{r}
-YEARS <- 100
 results <- empty_table
 for(i in 1:YEARS){
   status <- create_population(status)
@@ -305,7 +308,7 @@ ongoing_population <- function(status){ # spreminjanje populacije, ki je lahko t
   
 
   
-  new <- trunc(rnorm(1, risk_birth, 0.01) * n)
+  new <- rbinom(1, n, risk_birth)
   new_low <- round(perc_low * new, 0)
   new_high <- new - new_low
   
@@ -397,8 +400,8 @@ find_low_null <- 0
 find_high_null <- 0# ce to dvignes, moras spremeniti kodo?
 find_ca_null <- 0.1
 
-find_low_screen <- 0.8 # od tu naprej rabis tri sete, za boljsi in slabsi screen in sploh brez screena
-find_high_screen <- 0.95
+find_low_screen <- 0.6 # od tu naprej rabis tri sete, za boljsi in slabsi screen in sploh brez screena
+find_high_screen <- 0.8
 find_ca_screen <- 1
 ```
 
@@ -429,7 +432,6 @@ empty_table_ongoing <- test[, 1:5]
 
 
 ```{r}
-YEARS <- 30
 results <- empty_table_ongoing
 for(i in 1:YEARS){
   status <- ongoing_population(status)
@@ -441,6 +443,22 @@ for(i in 1:YEARS){
 }
 ```
 
+```{r}
+find_low_screen <- 0.9 # od tu naprej rabis tri sete, za boljsi in slabsi screen in sploh brez screena
+find_high_screen <- 1
+find_ca_screen <- 1
+```
+
+```{r}
+for(i in 1:YEARS){
+  status <- ongoing_population(status)
+  status <- diagnosis_function(status)
+  line <- count_function(status)
+  
+  results <- cbind(results, line)
+
+}
+```
 
 ```{r}
 dead_AC <- which(results$stage=="dead_AC" & results$treatment_status!="dead")
@@ -521,8 +539,3 @@ ggplot(data=agg_long_alive_perc[which(agg_long_alive_perc$stage!="nought"),]) + 
 
 ggplot(data=agg_long_dead_perc) + geom_line(aes(x=as.numeric(year), y=perc, color=stage, linetype=risk)) 
 ```
-
-```{r}
-
-```
-
