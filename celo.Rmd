@@ -4,7 +4,6 @@ output: pdf_document
 date: "2024-12-30"
 ---
 
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
@@ -14,45 +13,37 @@ library(tidyr)
 ```
 
 ```{r}
-YEARS <- 20
-n <- 20000
+YEARS_establish <- 100
+YEARS_low <- 250
+YEARS_high <- 50
+
+n <- 2000
 perc_low <- 0.5
 perc_high <- 0.5
-
-n_low <- n*perc_low
-n_high <- n*perc_high
 
 risk_low_nought_low <- 0.025 ### ugibanje
 risk_low_nought_high <- 0.0025 ## deljeno z 10 za en višji prehod
 risk_low_nought_ca <- 0.00025 ##
-risk_low_nought_same <- 1 - risk_low_nought_low - risk_low_nought_high - risk_low_nought_ca
 risk_low_low_high <- 0.05 #
 risk_low_low_ca <- 0.005 ##
-risk_low_low_same <- 1 - risk_low_low_high - risk_low_low_ca
 risk_low_high_ca <- 0.02 # kvazi literatura, polovica high risk
 risk_low_high_low <- 0.6 #
-risk_low_high_same <- 1 - risk_low_high_ca - risk_low_high_low
 
 risk_high_nought_low <- 0.05 ###
 risk_high_nought_high <- 0.005 ###
 risk_high_nought_ca <- 0.000002 ###
-risk_high_nought_same <- 1 - risk_high_nought_low - risk_high_nought_high - risk_high_nought_ca
 risk_high_low_high <- 0.1 #
 risk_high_low_ca <- 0.01 ##
-risk_high_low_same <- 1 - risk_high_low_high - risk_high_low_ca
 risk_high_high_ca <- 0.035 # literatura
 risk_high_high_low <- 0.3 # literatura
-risk_high_high_same <- 1 - risk_high_high_ca - risk_high_high_low
 
 risk_ca_death <- 0.05
-risk_ca_curative <- 0.8
-risk_ca_continue <- 1 - risk_ca_death - risk_ca_curative
-risk_ca_alive <- 1-risk_ca_death
 
 risk_IT_ca_death <- 0.01
+risk_IT_ca_curative <- 0.8
 
 risk_death <- 0.007 #
-risk_birth <- 0.007#
+risk_birth <- 0.008#
 
 surv_years <- 3
 treat_years <- 5
@@ -62,17 +53,27 @@ treat_years <- 5
 # populacija
 
 ```{r}
-create_population <- function(status){ # samo iscemo steady state populacijo brez screeninga in zdravljenja
+create_population <- function(status, perc_low=0.5, perc_high=0.5, risk_low_nought_low=0.025, risk_low_nought_high=0.0025, risk_low_nought_ca=0.00025, risk_low_low_high=0.05, risk_low_low_ca=0.005, risk_low_high_ca=0.02, risk_low_high_low=0.6, risk_high_nought_low=0.05, risk_high_nought_high=0.005, risk_high_nought_ca=0.000002, risk_high_low_high=0.1, risk_high_low_ca=0.01, risk_high_high_ca=0.035, risk_high_high_low=0.3, risk_ca_death=0.05, risk_IT_ca_death=0.01, risk_IT_ca_curative=0.8, risk_death=0.007, risk_birth=0.008, surv_years=3, treat_years=5){ # samo iscemo steady state populacijo brez screeninga in zdravljenja
+  
+  risk_alive <- 1-risk_death
+  risk_IT_ca_continue <- 1 - risk_IT_ca_death - risk_IT_ca_curative
+  risk_ca_alive <- 1-risk_ca_death
+  risk_high_high_same <- 1 - risk_high_high_ca - risk_high_high_low
+  risk_high_low_same <- 1 - risk_high_low_high - risk_high_low_ca
+  risk_high_nought_same <- 1 - risk_high_nought_low - risk_high_nought_high - risk_high_nought_ca
+  risk_low_high_same <- 1 - risk_low_high_ca - risk_low_high_low
+  risk_low_low_same <- 1 - risk_low_low_high - risk_low_low_ca
+  risk_low_nought_same <- 1 - risk_low_nought_low - risk_low_nought_high - risk_low_nought_ca
+
   status_copy <- status
   
   for (i in 1:dim(status)[1]){
-    
-    random_death <- runif(1)
-    if (random_death < risk_death){
-      status_copy$stage[i] <- "dead_other"
+    status_copy$stage[i] <- sample(c(status_copy$stage[i], "dead_other"), 1, prob=c(risk_alive, risk_death))#random death
+    if(status_copy$stage[i]=="dead_other"){
       status_copy$treatment_status[i] <- "dead"
+    } #zaklepaj za dead_other to dead
 
-    } else { #zaklepaj random death
+    if (status_copy$treatment_status[i]!="dead"){ 
         if (status$risk[i]=="low"){
           if (status$stage[i]=="nought"){
             status_copy$stage[i] <- sample(c("low", "high", "ca", "nought"), 1, prob=c(risk_low_nought_low, risk_low_nought_high, risk_low_nought_ca, risk_low_nought_same))
@@ -94,10 +95,16 @@ create_population <- function(status){ # samo iscemo steady state populacijo bre
               status_copy$stage[i] <- sample(c("ca", "dead_AC"), 1, prob=c(risk_ca_death, risk_ca_alive))
           }
       } #zaklepaj high risk
-    } #zaklepaj no random death
+    } #zaklepaj still alive, zato potece leto
+    
+    if (status_copy$stage[i]=="dead_AC"){
+        status_copy$treatment_status[i] <- "dead"
+    } #zaklepaj za dead_AC to dead
   } #zaklepaj iterator
   
   status_copy$surv_year <- as.character((as.numeric(status_copy$surv_year) + 1)%%3)
+  
+  n <- dim(status_copy)[1]
   
   new <- rbinom(1, n, risk_birth)
   new_low <- round(perc_low * new, 0)
@@ -119,7 +126,7 @@ create_population <- function(status){ # samo iscemo steady state populacijo bre
 } #zaklepaj funkcije
 
 
-count_function <- function(status){
+count_function <- function(status, surv_years, treat_years){
   table <- setDT(status)
 
   test <- setkey(table, stage, risk, surv_year, treatment_year, treatment_status)[, .N, 
@@ -127,21 +134,24 @@ count_function <- function(status){
                c("low", "high"),
                as.character(seq(0, surv_years-1, 1)),
                c(seq(0, treat_years, 1), NA),
-               c("none", "IT", "repeat_IT", "AIN", "AIN_history", "CA_followup", "CA_history", "dead")), 
+               c("none", "IT", "AIN", "CA_followup", "dead")), 
                allow.cartesian=TRUE][is.na(N), N := 0L]
   
   return(test$N)
 }
 
 ```
-options_stage <- c("nought", "low", "high", "ca", "dead_AC", "dead_other")
-options_risk <- c("low", "high")
-options_surv_year <- seq(0, surv_years-1, 1)
-options_treatment_year <- c(seq(0, treat_years, 1), NA)
-options_treatment_status <- c("none", "IT", "AIN_history", "CA_history", "dead")
-
 
 ```{r}
+n <- 2000
+perc_low <- 0.5
+perc_high <- 0.5
+n_low <- n*perc_low
+n_high <- n*perc_high
+
+surv_years <- 3
+treat_years <- 5
+
 stage <- rep("nought", n)
 risk <- c(rep("low", n_low), rep("high", n_high))
 surv_year <- as.character(sample(0:(surv_years-1), n, replace=TRUE))
@@ -156,16 +166,16 @@ test <- setkey(table, stage, risk, surv_year, treatment_year, treatment_status)[
                c("low", "high"),
                as.character(seq(0, surv_years-1, 1)),
                c(seq(0, treat_years, 1), NA),
-               c("none", "IT", "repeat_IT", "AIN", "AIN_history", "CA_followup", "CA_history", "dead")), 
+               c("none", "IT", "AIN", "CA_followup", "dead")), 
                allow.cartesian=TRUE][is.na(N), N := 0L]
 
 empty_table <- test[, 1:5]
 ```
 
-
 ```{r}
+YEARS_establish <- 100
 results <- empty_table
-for(i in 1:YEARS){
+for(i in 1:YEARS_establish){
   status <- create_population(status)
   line <- count_function(status)
   
@@ -175,44 +185,41 @@ for(i in 1:YEARS){
 ```
 
 ```{r}
-dead_AC <- which(results$stage=="dead_AC" & results$treatment_status!="dead")
-results <- results[-dead_AC,]
-dead_other <- which(results$stage=="dead_other" & results$treatment_status!="dead")
-results <- results[-dead_other,]
+dead <- which(results$treatment_status=="dead")
+alive <- results[-dead,]
+dead <- results[dead,]
 
-results_df <- setDF(results)
+alive_df <- setDF(alive)
+dead_df <- setDF(dead)
 
-partial_names_interim <- as.character(seq(1, YEARS, 1))
+partial_names_interim <- as.character(seq(1, YEARS_establish, 1))
 partial_names <- paste("year_", partial_names_interim, sep="")
 names_full <- c("stage", "risk", "surv_year", "treatment_year", "treatment_status", partial_names)
-names(results_df) <- names_full
+names(alive_df) <- names_full
+names(dead_df) <- names_full
+
+alive_agg <- aggregate(. ~ stage + risk, alive_df[, c(1, 2, 6:(YEARS_establish+5))], sum)
+dead_agg <- aggregate(. ~ stage + risk, dead_df[, c(1, 2, 6:(YEARS_establish+5))], sum)
 
 
-
-results_agg <- aggregate(. ~ stage + risk, results_df[, c(1, 2, 6:(YEARS+5))], sum)
-
-dead_numbers <- which(results_agg$stage=="dead_AC" | results_agg$stage=="dead_other")
-agg_dead <- results_agg[dead_numbers,]
-agg_alive <- results_agg[-dead_numbers,]
-
-for (i in 3:(YEARS+2)){
-  agg_alive[, i] <- agg_alive[,i]/sum(agg_alive[,i] )* 100
+for (i in 3:(YEARS_establish+2)){
+  alive_agg[, i] <- alive_agg[,i]/sum(alive_agg[,i] )* 100
 }
 
-for (i in 3:(YEARS+2)){
-  agg_dead[, i] <- agg_dead[,i]/sum(agg_dead[,i] )* 100
+for (i in 3:(YEARS_establish+2)){
+  dead_agg[, i] <- dead_agg[,i]/sum(dead_agg[,i] )* 100
 }
 
 
 
-agg_long_dead <- pivot_longer(agg_dead, 
+agg_long_dead <- pivot_longer(dead_agg, 
     cols = starts_with("year_"),
     names_to = "year",
     names_prefix = "year_",
     values_to = "perc"
   )
 
-agg_long_alive <- pivot_longer(agg_alive, 
+agg_long_alive <- pivot_longer(alive_agg, 
     cols = starts_with("year_"),
     names_to = "year",
     names_prefix = "year_",
@@ -222,7 +229,6 @@ agg_long_alive <- pivot_longer(agg_alive,
 
 ```
 
-
 ```{r}
 ggplot(data=agg_long_alive) + geom_line(aes(x=as.numeric(year), y=perc, color=stage, linetype=risk)) 
 ggplot(data=agg_long_alive[which(agg_long_alive$stage!="nought"),]) + geom_line(aes(x=as.numeric(year), y=perc, color=stage, linetype=risk)) 
@@ -231,165 +237,170 @@ ggplot(data=agg_long_dead) + geom_line(aes(x=as.numeric(year), y=perc, color=sta
 ```
 # zaznavanje/zdravljenje
 
-options_stage <- c("nought", "1", "2", "3", "A", "B", "C", "D", "dead_AC", "dead_other")
-options_risk <- c("low", "high")
-options_surv_year <- seq(0, surv_years-1, 1)
-options_treatment_year <- c(seq(0, treat_years, 1), NA)
-options_treatment_status <- c("none", "IT", "repeat_IT", "AIN_history", "CA_followup", "CA_history", "dead")
-
-
 ```{r}
-ongoing_population <- function(status){ # spreminjanje populacije, ki je lahko tudi zaznana in zdravljena
-  status_copy <- status
+ongoing_population <- function(status, perc_low=0.5, perc_high=0.5, risk_low_nought_low=0.025, risk_low_nought_high=0.0025, risk_low_nought_ca=0.00025, risk_low_low_high=0.05, risk_low_low_ca=0.005, risk_low_high_ca=0.02, risk_low_high_low=0.6, risk_high_nought_low=0.05, risk_high_nought_high=0.005, risk_high_nought_ca=0.000002, risk_high_low_high=0.1, risk_high_low_ca=0.01, risk_high_high_ca=0.035, risk_high_high_low=0.3, risk_ca_death=0.05, risk_IT_ca_death=0.01, risk_IT_ca_curative=0.8, risk_death=0.007, risk_birth=0.008, surv_years=3, treat_years=5){
   
+  risk_alive <- 1-risk_death
+  risk_IT_ca_continue <- 1 - risk_IT_ca_death - risk_IT_ca_curative
+  risk_ca_alive <- 1-risk_ca_death
+  risk_high_high_same <- 1 - risk_high_high_ca - risk_high_high_low
+  risk_high_low_same <- 1 - risk_high_low_high - risk_high_low_ca
+  risk_high_nought_same <- 1 - risk_high_nought_low - risk_high_nought_high - risk_high_nought_ca
+  risk_low_high_same <- 1 - risk_low_high_ca - risk_low_high_low
+  risk_low_low_same <- 1 - risk_low_low_high - risk_low_low_ca
+  risk_low_nought_same <- 1 - risk_low_nought_low - risk_low_nought_high - risk_low_nought_ca
+
+  status_copy <- status
   for (i in 1:dim(status)[1]){
-    random_death <- runif(1)
-    if (random_death < risk_death){
-      status_copy$stage[i] <- "dead_other"
+    status_copy$stage[i] <- sample(c(status_copy$stage[i], "dead_other"), 1, prob=c(risk_alive, risk_death))#random death
+    if(status_copy$stage[i]=="dead_other"){
       status_copy$treatment_status[i] <- "dead"
+    } #zaklepaj za dead_other to dead
 
-    } else { #zaklepaj random death
-        random <- runif(1)
-
-        if (status$treatment_status[i]=="IT" | status$treatment_status[i]=="repeat_IT"){ #vse AIN imajo treatment_status AIN_history, in se tu obravnavajo kot "low" in "high" risk
-          if (status$stage[i]=="ca"){
-            if (random < 0.8){# ti so ozdraveli in zacnejo steti leta za followup
-              status_copy$stage[i] <- "nought"
-              status_copy$treatment_status[i] <- "CA_followup"
-              status_copy$treatment_year[i] <- 1
-            }
-          } else if (random < 0.8 + risk_IT_ca_death){
-              status_copy$stage[i] <- "dead_AC"
-              status_copy$treatment_status[i] <- "dead"
+    if (status_copy$treatment_status[i]!="dead"){ 
+        if (status$risk[i]=="low"){
+          if (status$stage[i]=="nought"){
+            status_copy$stage[i] <- sample(c("low", "high", "ca", "nought"), 1, prob=c(risk_low_nought_low, risk_low_nought_high, risk_low_nought_ca, risk_low_nought_same))
+          } else if (status$stage[i]=="low"){
+              status_copy$stage[i] <- sample(c("high", "ca", "low"), 1, prob=c(risk_low_low_high, risk_low_low_ca, risk_low_low_same))
+          } else if (status$stage[i]=="high"){
+              status_copy$stage[i] <- sample(c("ca", "low", "high"), 1, prob=c(risk_low_high_ca, risk_low_high_low, risk_low_high_same))
+          } else if (status$stage[i]=="ca"){
+              if (status$treatment_status[i]=="IT"){
+                status_copy$stage[i] <- sample(c("ca", "dead_AC", "nought"), 1, prob=c(risk_IT_ca_continue, risk_IT_ca_death, risk_IT_ca_curative))
+                if (status_copy$stage[i]=="dead_AC"){
+                  status_copy$treatment_status[i]=="dead"
+                } else if (status_copy$stage[i]=="nought"){
+                  status_copy$treatment_status[i]=="CA_followup"
+                  status_copy$treatment_year <- 0
+                }
+              } else if (status$treatment_status[i]=="none"){
+                  status_copy$stage[i] <- sample(c("ca", "dead_AC"), 1, prob=c(risk_ca_alive, risk_ca_death))
+                  if (status_copy$stage[i]=="dead_AC"){
+                    status_copy$treatment_status[i]=="dead"
+                  } 
+              }
           }
-        } else { #zaklepaj in treatment
-            if (status$treatment_status[i]=="AIN"){
-              status$treatment_status[i] <- "AIN_history" # popravimo status, ker je lani imel AIN, zdaj je ze v zgodovini
-              status$stage[i] <- "nought" # popravimo stage, ker je bil AIN lani odstranjen
-            }
-            if (status$risk[i]=="low"){
-              if (status$stage[i]=="nought"){
-                status_copy$stage[i] <- sample(c("low", "high", "ca", "nought"), 1, prob=c(risk_low_nought_low, risk_low_nought_high, risk_low_nought_ca, risk_low_nought_same))
-              } else if (status$stage[i]=="low"){
-                  status_copy$stage[i] <- sample(c("high", "ca", "low"), 1, prob=c(risk_low_low_high, risk_low_low_ca, risk_low_low_same))
-              } else if (status$stage[i]=="high"){
-                  status_copy$stage[i] <- sample(c("ca", "low", "high"), 1, prob=c(risk_low_high_ca, risk_low_high_low, risk_low_high_same))
-              } else if (status$stage[i]=="ca"){
-                  status_copy$stage[i] <- sample(c("ca", "dead_AC"), 1, prob=c(risk_ca_death, risk_ca_alive))
+      } else if (status$risk[i]=="high"){ #zaklepaj low risk
+          if (status$stage[i]=="nought"){
+            status_copy$stage[i] <- sample(c("low", "high", "ca", "nought"), 1, prob=c(risk_high_nought_low, risk_high_nought_high, risk_high_nought_ca, risk_high_nought_same))
+          } else if (status$stage[i]=="low"){
+              status_copy$stage[i] <- sample(c("high", "ca", "low"), 1, prob=c(risk_high_low_high, risk_high_low_ca, risk_high_low_same))
+          } else if (status$stage[i]=="high"){
+              status_copy$stage[i] <- sample(c("ca", "low", "high"), 1, prob=c(risk_high_high_ca, risk_high_high_low, risk_high_high_same))
+          } else if (status$stage[i]=="ca"){
+              if (status$treatment_status[i]=="IT"){
+                status_copy$stage[i] <- sample(c("ca", "dead_AC", "nought"), 1, prob=c(risk_IT_ca_continue, risk_IT_ca_death, risk_IT_ca_curative))
+                if (status_copy$stage[i]=="dead_AC"){
+                  status_copy$treatment_status[i]=="dead"
+                } else if (status_copy$stage[i]=="nought"){
+                  status_copy$treatment_status[i]=="CA_followup"
+                  status_copy$treatment_year <- 0
+                }
+              } else if (status$treatment_status[i]=="none"){
+                  status_copy$stage[i] <- sample(c("ca", "dead_AC"), 1, prob=c(risk_ca_alive, risk_ca_death))
+                  if (status_copy$stage[i]=="dead_AC"){
+                    status_copy$treatment_status[i]=="dead"
+                  } 
               }
-          } else if (status$risk[i]=="high"){ #zaklepaj low risk
-              if (status$stage[i]=="nought"){
-                status_copy$stage[i] <- sample(c("low", "high", "ca", "nought"), 1, prob=c(risk_high_nought_low, risk_high_nought_high, risk_high_nought_ca, risk_high_nought_same))
-              } else if (status$stage[i]=="low"){
-                  status_copy$stage[i] <- sample(c("high", "ca", "low"), 1, prob=c(risk_high_low_high, risk_high_low_ca, risk_high_low_same))
-              } else if (status$stage[i]=="high"){
-                  status_copy$stage[i] <- sample(c("ca", "low", "high"), 1, prob=c(risk_high_high_ca, risk_high_high_low, risk_high_high_same))
-              } else if (status$stage[i]=="ca"){
-                  status_copy$stage[i] <- sample(c("ca", "dead_AC"), 1, prob=c(risk_ca_death, risk_ca_alive))
-              }
-          } #zaklepaj high risk
-        } # zaklepaj not in treatment
-    } #zaklepaj no random death
+          }
+      } #zaklepaj high risk
+    } #zaklepaj still alive, zato potece leto
   } #zaklepaj iterator
   
-  status_copy$surv_year <- (as.numeric(status_copy$surv_year) + 1)%%3
-  status_copy$treatment_year <- (as.numeric(status_copy$treatment_year) + 1)%%5
+  status_copy$surv_year <- as.character((as.numeric(status_copy$surv_year) + 1)%%3)
   
-  for (i in 1:dim(status)[1]){
-    if (is.na(status_copy$treatment_year[i])==FALSE){
-      if (status_copy$treatment_year[i]==0){
-        status_copy$treatment_year[i] <- NA
-        status_copy$treatment_status[i] <- "CA_history"
-        status_copy$surv_year[i] <- 0
-      }
-    }
-    
-  }
-  
+  n <- dim(status_copy)[1]
 
-  
   new <- rbinom(1, n, risk_birth)
   new_low <- round(perc_low * new, 0)
   new_high <- new - new_low
   
   add_lines <- as.data.frame(cbind(rep("nought", new),
                      c(rep("low", new_low), rep("high", new_high)),
-                     sample(0:(surv_years-1), new, replace=TRUE),
+                     as.character(sample(0:(surv_years-1), new, replace=TRUE)),
                      rep(NA, new),
                      rep("none", new)))
   names(add_lines) <- c("stage", "risk", "surv_year", "treatment_year", "treatment_status")
   
   
   status_copy <- rbind(status_copy, add_lines)
-  status_copy$surv_year <- as.numeric(status_copy$surv_year)
-  status_copy$treatment_year <- as.numeric(status_copy$treatment_year)
   status <- status_copy
   
   return(status)
-  
-} #zaklepaj funkcije
+}
+```
 
-diagnosis_function <- function(status){
+
+```{r}
+diagnosis_function <- function(status, miss_low_screen, find_low_screen, miss_high_screen, find_high_screen, miss_ca_screen, find_ca_screen, miss_ca_null, find_ca_null){
   
   for (i in 1:dim(status)[1]){
-    if (status$treatment_status[i]!="dead"){
-      random <- runif(1)
-      if (status$treatment_status[i]=="CA_followup"){#gledamo vsako leto, najdemo vse; "IT" tudi gledamo vsako leto, ampak najden AIN ne spremeni nicesar, ker ga samo odstranimo in itak ni generiran in gre zdravljenje naprej, ca pa ne bomo nasli, ker ga gledamo vsako leto
-        if (status$stage[i] =="ca"){
-          status$treatment_year[i] <- NA
-          status$treatment_status[i] <- "repeat_IT"
-        }
-      } else if (status$treatment_status[i]=="none" | status$treatment_status[i]=="AIN_history" | status$treatment_status[i]=="CA_history" ) {#gledamo na screening, ostale najdemo samo nakljucno; zaklepaj in treatment
-        if (status$surv_year[i]==0){ #te screenamo
+      #ce je v IT, mu nic ne generiramo, ker bi vse najdbe nasli in ne bi spremenile zdravljenja, ki bo slo v FU, ko bo vse izginilo, multiplih tumorjev pa ne modeliram
+      if (status$treatment_status[i]=="CA_followup"){#gledamo vsako leto, najdemo vse; najden ca resetira stetje let in tip zdravljenja, najden AIn ne spremeni nicesar, razen v zadnjem letu
+          if (status$stage[i] =="ca"){#najdemo nov karcinom
+            status$treatment_year[i] <- NA # odrezemo ca, gre nazaj v aktivno zdravljenje, na tej tocki ne more kar ozdraveti, ker je to ocenjevanje za letos ze mimo
+            status$treatment_status[i] <- "IT"
+          } else if (status$stage[i] =="low" | status$stage[i]=="high"){#najdemo nov AIN
+              if (status$treatment_year[i]==treat_years){#v zadnjem letu opazovanja odstranimo in ga pustimo se eno leto v opazovanju kot AIN
+                status$stage[i] <- "nought"
+                status$treatment_year[i] <- NA
+                status$treatment_status[i] <- "AIN"
+              } else if (status$treatment_year[i]<treat_years){
+                status$stage[i] <- "nought" # odrezemo ca, nadaljuje aktivno zdravljenje, stetje let se ne spremeni
+              }
+          } else {#ne najdemo nic
+              if (status$treatment_year[i]==treat_years) {#dosegel followup in nima nicesar letos, zato gre nazaj med zdrave
+                status$treatment_year[i] <- NA
+                status$treatment_status[i] <- "none"
+                status$surv_year[i] <- 0
+              } else {#ostane v followup, je eno leto naprej
+                status$treatment_year[i] <- status$treatment_year[i] + 1
+              }
+          }
+      } else if (status$treatment_status[i]=="none" | status$treatment_status[i]=="AIN") {#gledamo na screening; zaklepaj in FU
+        if (status$surv_year[i]==0 | status$treatment_status[i]=="AIN"){ #te screenamo
           if (status$stage[i]=="low"){
-            if (random < find_low_screen){
-              if(status$treatment_status[i]=="none")
-              status$treatment_status[i] <- "AIN"
+            status$treatment_status[i] <- sample(c("none", "AIN"), 1, prob=c(miss_low_screen, find_low_screen))
+            if (status$treatment_status[i]=="AIN"){#ko ga najdemo, ga odstranimo in gre v AIN, da bo naslednje leto pogledan
+              status$stage[i] <- "nought"
             }
           } else if (status$stage[i]=="high"){
-            if (random < find_high_screen){
-              if(status$treatment_status[i]=="none")
-              status$treatment_status[i] <- "AIN"
+            status$treatment_status[i] <- sample(c("none", "AIN"), 1, prob=c(miss_high_screen, find_high_screen))
+            if (status$treatment_status[i]=="AIN"){#ko ga najdemo, ga odstranimo in gre v AIN, da bo naslednje leto pogledan
+              status$stage[i] <- "nought"
             }
           } else if (status$stage[i]=="ca"){
-            if (random < find_ca_screen){
-              status$treatment_status[i] <- "IT"
-              status$treatment_year[i] <- 0
-              status$surv_year[i] <- NA
-            }
+            status$treatment_status[i] <- sample(c("none", "IT"), 1, prob=c(miss_ca_screen, find_ca_screen))
           } 
         } else { #te nademo samo nakljucno; zaklepaj screenani
             if (status$stage[i]=="ca"){
-              if (random < find_ca_null){
-                status$treatment_status[i] <- "IT"
-                status$treatment_year[i] <- 0
-                status$surv_year[i] <- NA
-              }
+              status$treatment_status[i] <- sample(c("none", "IT"), 1, prob=c(miss_ca_null, find_ca_null))
             } 
         } #zaklepaj nakljucni
-      }#zaklepaj not in treatment
-    } # zaklepaj ali je sploh ziv
-    
-  }# zaklepaj iteratorja
+      }#zaklepaj none in AIN
+    }# zaklepaj iteratorja
   
+  status$treatment_year <- as.numeric(status$treatment_year)
+
   return(status)
 }# zaklepaj funkcije
 
 
 
-count_function <- function(status){
-  table <- setDT(status)
-
-  test <- setkey(table, stage, risk, surv_year, treatment_year, treatment_status)[, .N, 
-               by="stage,risk,surv_year,treatment_year,treatment_status"][CJ(c("nought", "low", "high", "ca", "dead_AC", "dead_other"),
-               c("low", "high"),
-               c(seq(0, surv_years-1, 1), NA),
-               c(seq(0, treat_years, 1), NA),
-               c("none", "IT", "repeat_IT", "AIN", "AIN_history", "CA_followup", "CA_history", "dead")), 
-               allow.cartesian=TRUE][is.na(N), N := 0L]
+#count_function <- function(status){
+ # table <- setDT(status)
+#
+ # test <- setkey(table, stage, risk, surv_year, treatment_year, treatment_status)[, .N, 
+  #             by="stage,risk,surv_year,treatment_year,treatment_status"][CJ(c("nought", "low", "high", "ca", "dead_AC", "dead_other"),
+   #            c("low", "high"),
+    #           as.character(seq(0, surv_years-1, 1)),
+     #          c(seq(0, treat_years, 1), NA),
+      #         c("none", "IT", "AIN", "CA_followup", "dead")), 
+       #        allow.cartesian=TRUE][is.na(N), N := 0L]
   
-  return(test$N)
-}
+  #return(test$N)
+#}
 
 ```
 
@@ -397,12 +408,18 @@ count_function <- function(status){
 
 ```{r}
 find_low_null <- 0
+miss_low_null <- 1 - find_low_null
 find_high_null <- 0# ce to dvignes, moras spremeniti kodo?
+miss_high_null <- 1 - find_high_null
 find_ca_null <- 0.1
+miss_ca_null <- 1 - find_ca_null
 
 find_low_screen <- 0.6 # od tu naprej rabis tri sete, za boljsi in slabsi screen in sploh brez screena
+miss_low_screen <- 1 - find_low_screen
 find_high_screen <- 0.8
+miss_high_screen <- 1 - find_high_screen
 find_ca_screen <- 1
+miss_ca_screen <- 1- find_ca_screen
 ```
 
 ```{r}
@@ -417,40 +434,31 @@ status$surv_year <- as.numeric(status$surv_year)
 
 ```
 
-```{r}
-table <- setDT(status)
-test <- setkey(table, stage, risk, surv_year, treatment_year, treatment_status)[, .N, 
-               by="stage,risk,surv_year,treatment_year,treatment_status"][CJ(c("nought", "low", "high", "ca", "dead_AC", "dead_other"),
-               c("low", "high"),
-               c(seq(0, surv_years-1, 1), NA),
-               c(seq(0, treat_years, 1), NA),
-               c("none", "IT", "repeat_IT", "AIN", "AIN_history", "CA_followup", "CA_history", "dead")), 
-               allow.cartesian=TRUE][is.na(N), N := 0L]
-
-empty_table_ongoing <- test[, 1:5]
-```
-
 
 ```{r}
-results <- empty_table_ongoing
-for(i in 1:YEARS){
+for(i in 1:YEARS_low){
   status <- ongoing_population(status)
   status <- diagnosis_function(status)
   line <- count_function(status)
   
   results <- cbind(results, line)
-
 }
 ```
 
 ```{r}
 find_low_screen <- 0.9 # od tu naprej rabis tri sete, za boljsi in slabsi screen in sploh brez screena
+miss_low_screen <- 1 - find_low_screen
+
 find_high_screen <- 1
+miss_high_screen <- 1 - find_high_screen
+
 find_ca_screen <- 1
+miss_ca_screen <- 1- find_ca_screen
+
 ```
 
 ```{r}
-for(i in 1:YEARS){
+for(i in 1:YEARS_high){
   status <- ongoing_population(status)
   status <- diagnosis_function(status)
   line <- count_function(status)
@@ -461,62 +469,58 @@ for(i in 1:YEARS){
 ```
 
 ```{r}
-dead_AC <- which(results$stage=="dead_AC" & results$treatment_status!="dead")
-results <- results[-dead_AC,]
-dead_other <- which(results$stage=="dead_other" & results$treatment_status!="dead")
-results <- results[-dead_other,]
+dead <- which(results$treatment_status=="dead")
+alive <- results[-dead,]
+dead <- results[dead,]
 
-results_df <- setDF(results)
+alive_df <- setDF(alive)
+dead_df <- setDF(dead)
 
-partial_names_interim <- as.character(seq(1, YEARS, 1))
+YEARS_total <- YEARS_establish + YEARS_low + YEARS_high
+
+partial_names_interim <- as.character(seq(1, YEARS_total, 1))
 partial_names <- paste("year_", partial_names_interim, sep="")
 names_full <- c("stage", "risk", "surv_year", "treatment_year", "treatment_status", partial_names)
-names(results_df) <- names_full
+names(alive_df) <- names_full
+names(dead_df) <- names_full
+
+alive_agg <- aggregate(. ~ stage + risk, alive_df[, c(1, 2, 6:(YEARS_total+5))], sum)
+dead_agg <- aggregate(. ~ stage + risk, dead_df[, c(1, 2, 6:(YEARS_total+5))], sum)
+
+alive_agg_perc <- alive_agg
+for (i in 3:(YEARS_total+2)){
+  alive_agg_perc[, i] <- alive_agg_perc[,i]/sum(alive_agg_perc[,i] )* 100
+}
+
+dead_agg_perc <- dead_agg
+for (i in 3:(YEARS_total+2)){
+  dead_agg_perc[, i] <- dead_agg_perc[,i]/sum(dead_agg_perc[,i] )* 100
+}
 
 
 
-results_agg <- aggregate(. ~ stage + risk, results_df[, c(1, 2, 6:(YEARS+5))], sum)
-
-dead_numbers <- which(results_agg$stage=="dead_AC" | results_agg$stage=="dead_other")
-agg_dead <- results_agg[dead_numbers,]
-agg_alive <- results_agg[-dead_numbers,]
-
-agg_long_dead <- pivot_longer(agg_dead, 
+agg_long_dead <- pivot_longer(dead_agg, 
     cols = starts_with("year_"),
     names_to = "year",
     names_prefix = "year_",
     values_to = "count"
   )
 
-agg_long_alive <- pivot_longer(agg_alive, 
+agg_long_alive <- pivot_longer(alive_agg, 
     cols = starts_with("year_"),
     names_to = "year",
     names_prefix = "year_",
     values_to = "count"
 )
 
-
-agg_alive_perc <- agg_alive
-agg_dead_perc <- agg_dead
-
-for (i in 3:(YEARS+2)){
-  agg_alive_perc[, i] <- agg_alive_perc[,i]/sum(agg_alive_perc[,i] )* 100
-}
-
-for (i in 3:(YEARS+2)){
-  agg_dead_perc[, i] <- agg_dead_perc[,i]/sum(agg_dead_perc[,i] )* 100
-}
-
-
-
-agg_long_dead_perc <- pivot_longer(agg_dead_perc, 
+agg_long_dead_perc <- pivot_longer(dead_agg_perc, 
     cols = starts_with("year_"),
     names_to = "year",
     names_prefix = "year_",
     values_to = "perc"
   )
 
-agg_long_alive_perc <- pivot_longer(agg_alive_perc, 
+agg_long_alive_perc <- pivot_longer(alive_agg_perc, 
     cols = starts_with("year_"),
     names_to = "year",
     names_prefix = "year_",
@@ -532,10 +536,95 @@ ggplot(data=agg_long_alive[which(agg_long_alive$stage!="nought"),]) + geom_line(
 
 ggplot(data=agg_long_dead) + geom_line(aes(x=as.numeric(year), y=count, color=stage, linetype=risk)) 
 ```
+```{r}
+alive_agg_treat <- aggregate(. ~ treatment_status, alive_df[, c(5:(YEARS_total+5))], sum)
+
+dim(alive_agg_treat)
+alive_agg_treat <- rbind(alive_agg_treat, c(NA, colSums(alive_agg_treat[, 2:YEARS_total+1])))
+alive_agg_treat[5, 1] <- "all_alive"
+agg_long_treat <- pivot_longer(alive_agg_treat, 
+    cols = starts_with("year_"),
+    names_to = "year",
+    names_prefix = "year_",
+    values_to = "count"
+  )
+ggplot(data=agg_long_treat[which(agg_long_treat$treatment_status!="none"),]) + geom_line(aes(x=as.numeric(year), y=count, color=treatment_status)) 
+
+```
 
 ```{r}
-ggplot(data=agg_long_alive_perc) + geom_line(aes(x=as.numeric(year), y=perc, color=stage, linetype=risk)) 
-ggplot(data=agg_long_alive_perc[which(agg_long_alive_perc$stage!="nought"),]) + geom_line(aes(x=as.numeric(year), y=perc, color=stage, linetype=risk)) 
+whole_sim <- function(find_low_screen_post=0.9, find_high_screen_post=1, find_ca_screen_post=1, find_low_screen_pre=0.6, find_high_screen_pre=0.8, find_ca_screen_pre=1, find_ca_null=0.1, n=2000, perc_low=0.5, perc_high=0.5, risk_low_nought_low=0.025, risk_low_nought_high=0.0025, risk_low_nought_ca=0.00025, risk_low_low_high=0.05, risk_low_low_ca=0.005, risk_low_high_ca=0.02, risk_low_high_low=0.6, risk_high_nought_low=0.05, risk_high_nought_high=0.005, risk_high_nought_ca=0.000002, risk_high_low_high=0.1, risk_high_low_ca=0.01, risk_high_high_ca=0.035, risk_high_high_low=0.3, risk_ca_death=0.05, risk_IT_ca_death=0.01, risk_IT_ca_curative=0.8, risk_death=0.007, risk_birth=0.008, surv_years=3, treat_years=5, YEARS_establish=100, YEARS_low=250, YEARS_high=50){
+  
+  find_low_null <- 0
+  find_high_null <- 0
+  miss_ca_null <- 1 - find_ca_null
+  miss_low_screen_pre <- 1 - find_low_screen_pre
+  miss_high_screen_pre <- 1 - find_high_screen_pre
+  miss_ca_screen_pre <- 1 - find_ca_screen_pre
+  miss_low_screen_post <- 1 - find_low_screen_post
+  miss_high_screen_post <- 1 - find_high_screen_post
+  miss_ca_screen_post <- 1 - find_ca_screen_post
+  n_low <- n*perc_low
+  n_high <- n*perc_high
+  
+  stage <- rep("nought", n)
+  risk <- c(rep("low", n_low), rep("high", n_high))
+  surv_year <- as.character(sample(0:(surv_years-1), n, replace=TRUE))
+  treatment_year <- rep(NA, n)
+  treatment_status <- rep("none", n)
+  
+  status <- as.data.frame(cbind(stage, risk, surv_year, treatment_year, treatment_status))
+  
+  table <- setDT(status)
+  test <- setkey(table, stage, risk, surv_year, treatment_year, treatment_status)[, .N, 
+                 by="stage,risk,surv_year,treatment_year,treatment_status"][CJ(c("nought", "low", "high", "ca", "dead_AC", "dead_other"),
+                 c("low", "high"),
+                 as.character(seq(0, surv_years-1, 1)),
+                 c(seq(0, treat_years, 1), NA),
+                 c("none", "IT", "AIN", "CA_followup", "dead")), 
+                 allow.cartesian=TRUE][is.na(N), N := 0L]
+  
+  results <- test[, 1:5]
 
-ggplot(data=agg_long_dead_perc) + geom_line(aes(x=as.numeric(year), y=perc, color=stage, linetype=risk)) 
+  for(i in 1:YEARS_establish){
+    status <- create_population(status)
+    line <- count_function(status, surv_years, treat_years)
+    
+    results <- cbind(results, line) #rabim za risanje generiranja simulacije, za dejansko stetje pa ne
+  }
+
+  status_start <- status[which(status$treatment_status!="dead"),] # ciscenje predhodnih mrtvih iz generirane populacije
+
+  status <- status_start
+  status$treatment_year <- as.numeric(status$treatment_year)
+  status$surv_year <- as.numeric(status$surv_year)
+
+  for(i in 1:YEARS_low){
+    status <- ongoing_population(status)
+    status <- diagnosis_function(status, miss_low_screen_pre, find_low_screen_pre, miss_high_screen_pre, find_high_screen_pre, miss_ca_screen_pre, find_ca_screen_pre, miss_ca_null, find_ca_null)
+    line <- count_function(status, surv_years, treat_years)
+    
+    results <- cbind(results, line)
+  }
+
+  for(i in 1:YEARS_high){
+    status <- ongoing_population(status)
+    status <- diagnosis_function(status, miss_low_screen_post, find_low_screen_post, miss_high_screen_post, find_high_screen_post, miss_ca_screen_post, find_ca_screen_post, miss_ca_null, find_ca_null)
+    line <- count_function(status, surv_years, treat_years)
+    
+    results <- cbind(results, line)
+  }
+  return(results)
+}
 ```
+
+```{r}
+whole <- c()
+
+for (i in 1:10){
+  d <- whole_sim()
+  d$rep <- i
+   whole <- rbind(whole, d)
+}
+```
+
